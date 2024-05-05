@@ -3,20 +3,14 @@ import os
 
 from rosdistro import get_index, get_index_url, get_cached_distribution
 from rosdistro.dependency_walker import DependencyWalker
+
 # from rosdistro.manifest_provider import get_release_tag
 
-_depends_type = [
-    "buildtool",
-    "buildtool_export",
-    "build",
-    "build_export",
-    "run",
-    "test",
-    "exec",
-]
 
 def main():
-    parser = argparse.ArgumentParser(description="Dependency snapshotting tool for ROS packages.")
+    parser = argparse.ArgumentParser(
+        description="Dependency snapshotting tool for ROS packages."
+    )
     parser.add_argument(
         "-d",
         "--distro",
@@ -33,6 +27,24 @@ def main():
         dest="package",
         default="ros_base",
         help="ROS package to get dependencies for (default: ros_base)",
+        required=False,
+    )
+    parser.add_argument(
+        "-t",
+        "--type",
+        type=str,
+        dest="types",
+        nargs="+",
+        default=[
+            "buildtool",
+            "buildtool_export",
+            "build",
+            "build_export",
+            "run",
+            "test",
+            "exec",
+        ],
+        help="Dependency type to get (default: all)",
         required=False,
     )
     args = parser.parse_args()
@@ -53,7 +65,7 @@ def main():
 
     dependencies = walker.get_recursive_depends(
         pkg_name=args.package,
-        depend_types=_depends_type,
+        depend_types=args.types,
         ros_packages_only=False,
         ignore_pkgs=None,
         limit_depth=1,
@@ -71,6 +83,7 @@ def main():
         except Exception as e:
             pass
         print("{0} ({1})".format(dep, version))
+
 
 if __name__ == "__main__":
     main()
