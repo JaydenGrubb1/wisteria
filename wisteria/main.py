@@ -1,6 +1,8 @@
 import argparse
 import os
+import yaml
 
+# import ruamel.yaml
 from rosdistro import get_index, get_index_url, get_cached_distribution
 from rosdistro.dependency_walker import DependencyWalker
 
@@ -49,6 +51,18 @@ def main():
     )
     args = parser.parse_args()
 
+    with open("robostack.yaml", "r") as f:
+        conda_index = yaml.safe_load(f)
+
+    def resolve_pkg(name):
+        # TODO handle platform
+        # TODO handle multiple mappings
+        if name in conda_index:
+            if "robostack" in conda_index[name]:
+                return conda_index[name]["robostack"]
+
+        return None
+
     index = get_index(get_index_url())
     distro = get_cached_distribution(index, args.distro)
 
@@ -63,27 +77,6 @@ def main():
 
     walker = DependencyWalker(distro, os.environ)
 
-    # dependencies = walker.get_recursive_depends(
-    #     pkg_name=args.package,
-    #     depend_types=args.types,
-    #     ros_packages_only=False,
-    #     ignore_pkgs=None,
-    #     limit_depth=1,
-    # )
-
-    # for dep in dependencies:
-    #     version = "unknown"
-    #     try:
-    #         pkg = distro.release_packages[dep]
-    #         repo = distro.repositories[pkg.repository_name].release_repository
-    #         # tag = get_release_tag(repo, dep)
-    #         # tag is in the form of "release/{distro}/{pkg}/{version}"
-    #         # IDK if tag is needed for anything
-    #         version = repo.version
-    #     except Exception as e:
-    #         pass
-    #     print("{0} ({1})".format(dep, version))
-
     visited = {}
 
     def walk_dependencies(name):
@@ -92,9 +85,15 @@ def main():
 
         if not name in distro.release_packages:
             # TODO check conda index
-            print("\033[93m{0}\033[0m".format(name))
-            visited[name] = True
-            return True
+            conda = resolve_pkg(name)
+            if conda is not None:
+                print("\033[93m{0} => {1}\033[0m".format(name, conda))
+                visited[name] = True
+                return True
+            else:
+                print("\033[91m{0} could not be resolved\033[0m".format(name))
+                visited[name] = False
+                return False  # TODO DONT RETURN TRUE
 
         dependencies = walker.get_recursive_depends(
             pkg_name=name,
@@ -106,6 +105,7 @@ def main():
 
         for dep in dependencies:
             if not walk_dependencies(dep):
+                print("\033[91m{0} could not be resolved\033[0m".format(name))
                 return False
 
         # process ROS package
@@ -117,6 +117,7 @@ def main():
         visited[name] = True
         return True
 
+    print("DEPENDENCIES:")
     walk_dependencies(args.package)
 
 
