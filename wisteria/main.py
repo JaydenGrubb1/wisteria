@@ -2,7 +2,6 @@ import argparse
 import os
 import yaml
 
-# import ruamel.yaml
 from rosdistro import get_index, get_index_url, get_cached_distribution
 from rosdistro.dependency_walker import DependencyWalker
 
@@ -49,17 +48,28 @@ def main():
         help="Dependency type to get (default: all)",
         required=False,
     )
+    parser.add_argument(
+        "-s",
+        "--system",
+        type=str,
+        dest="system",
+        choices=["linux", "osx", "win64"],
+        default="linux",
+        help="System to get dependencies for (default: linux)",
+        required=False,
+    )
     args = parser.parse_args()
 
     with open("robostack.yaml", "r") as f:
         conda_index = yaml.safe_load(f)
 
     def resolve_pkg(name):
-        # TODO handle platform
-        # TODO handle multiple mappings
         if name in conda_index:
             if "robostack" in conda_index[name]:
-                return conda_index[name]["robostack"]
+                if args.system in conda_index[name]["robostack"]:
+                    return conda_index[name]["robostack"][args.system]
+                else:
+                    return conda_index[name]["robostack"]
 
         return None
 
