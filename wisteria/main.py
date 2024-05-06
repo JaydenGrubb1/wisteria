@@ -56,6 +56,14 @@ def main():
         help="System to get dependencies for (default: linux)",
         required=False,
     )
+    parser.add_argument(
+        "--no-rpe",
+        action="store_true",
+        dest="no_rpe",
+        default=False,
+        help="Do not propogate resolution errors",
+        required=False,
+    )
     args = parser.parse_args()
 
     with open("robostack.yaml", "r") as f:
@@ -101,9 +109,13 @@ def main():
                 visited[name] = True
                 return True
             else:
-                print("\033[91m{0} could not be resolved\033[0m".format(name))
-                visited[name] = False
-                return False  # TODO DONT RETURN TRUE
+                print("\033[91m{0} => could not be resolved\033[0m".format(name))
+                if args.no_rpe:
+                    visited[name] = True
+                    return True
+                else:
+                    visited[name] = False
+                    return False
 
         dependencies = walker.get_recursive_depends(
             pkg_name=name,
