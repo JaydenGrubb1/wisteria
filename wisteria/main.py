@@ -5,8 +5,6 @@ import yaml
 from rosdistro import get_index, get_index_url, get_cached_distribution
 from rosdistro.dependency_walker import DependencyWalker
 
-# from rosdistro.manifest_provider import get_release_tag
-
 
 def main():
     parser = argparse.ArgumentParser(
@@ -88,6 +86,7 @@ def main():
     walker = DependencyWalker(distro, os.environ)
 
     visited = {}
+    conda_deps = []
 
     def walk_dependencies(name):
         if name in visited:
@@ -98,6 +97,7 @@ def main():
             conda = resolve_pkg(name)
             if conda is not None:
                 print("\033[93m{0} => {1}\033[0m".format(name, conda))
+                conda_deps.extend(conda)
                 visited[name] = True
                 return True
             else:
@@ -127,8 +127,15 @@ def main():
         visited[name] = True
         return True
 
-    print("DEPENDENCIES:")
+    print("ROS DEPENDENCIES:")
     walk_dependencies(args.package)
+
+    print()
+    print("CONDA DEPENDENCIES:")
+
+    conda_deps = list(set(conda_deps))
+    for dep in conda_deps:
+        print(dep)
 
 
 if __name__ == "__main__":
