@@ -1,6 +1,5 @@
 import argparse
 import os
-import yaml
 
 from rosdistro import get_index, get_index_url, get_cached_distribution
 from rosdistro.dependency_walker import DependencyWalker
@@ -56,33 +55,13 @@ def main():
         help="System to get dependencies for (default: linux)",
         required=False,
     )
-    parser.add_argument(
-        "--no-rpe",
-        action="store_true",
-        dest="no_rpe",
-        default=False,
-        help="Do not propogate resolution errors",
-        required=False,
-    )
     args = parser.parse_args()
 
-    with open("robostack.yaml", "r") as f:
-        conda_index = yaml.safe_load(f)
-
-    def resolve_pkg(name):
-        if name in conda_index:
-            if "robostack" in conda_index[name]:
-                if args.system in conda_index[name]["robostack"]:
-                    return conda_index[name]["robostack"][args.system]
-                else:
-                    return conda_index[name]["robostack"]
-
-        return None
-
-    index = get_index(get_index_url())
+    # TODO get distrubution at specific time
+    url = get_index_url()
+    index = get_index(url)
     distro = get_cached_distribution(index, args.distro)
 
-    # TODO: Is this necessary?
     python_version = index.distributions[args.distro]["python_version"]
     os.environ["ROS_PYTHON_VERSION"] = "{0}".format(python_version)
     os.environ["ROS_DISTRO"] = "{0}".format(args.distro)
@@ -93,61 +72,23 @@ def main():
 
     walker = DependencyWalker(distro, os.environ)
 
-    visited = {}
-    conda_deps = []
+    deps = walker.get_recursive_depends(
+        pkg_name=args.package,
+        depend_types=args.types,
+        ros_packages_only=True,
+        ignore_pkgs=None,
+    )
+    deps.add(args.package)
+    deps = sorted(deps)
 
-    def walk_dependencies(name):
-        if name in visited:
-            return visited[name]
+    max_len = max([len(dep) for dep in deps])
+    print("{0:{2}} {1}".format("Package", "Version", max_len + 2))
 
-        if not name in distro.release_packages:
-            # TODO check conda index
-            conda = resolve_pkg(name)
-            if conda is not None:
-                print("\033[93m{0} => {1}\033[0m".format(name, conda))
-                conda_deps.extend(conda)
-                visited[name] = True
-                return True
-            else:
-                print("\033[91m{0} => could not be resolved\033[0m".format(name))
-                if args.no_rpe:
-                    visited[name] = True
-                    return True
-                else:
-                    visited[name] = False
-                    return False
-
-        dependencies = walker.get_recursive_depends(
-            pkg_name=name,
-            depend_types=args.types,
-            ros_packages_only=False,
-            ignore_pkgs=None,
-            limit_depth=1,
-        )
-
-        for dep in dependencies:
-            if not walk_dependencies(dep):
-                print("\033[91m{0} could not be resolved\033[0m".format(name))
-                return False
-
-        # process ROS package
-        pkg = distro.release_packages[name]
+    for dep in deps:
+        pkg = distro.release_packages[dep]
         repo = distro.repositories[pkg.repository_name].release_repository
         version = repo.version
-        print("{0} ({1})".format(name, version))
-
-        visited[name] = True
-        return True
-
-    print("ROS DEPENDENCIES:")
-    walk_dependencies(args.package)
-
-    print()
-    print("CONDA DEPENDENCIES:")
-
-    conda_deps = list(set(conda_deps))
-    for dep in conda_deps:
-        print(dep)
+        print("{0:{2}} {1}".format(dep, version, max_len + 2))
 
 
 if __name__ == "__main__":
