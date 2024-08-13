@@ -1,6 +1,7 @@
 import argparse
 import os
-
+import yaml
+from __init__ import __version__
 from rosdistro import get_index, get_index_url, get_cached_distribution
 from rosdistro.dependency_walker import DependencyWalker
 
@@ -55,7 +56,36 @@ def main():
         help="System to get dependencies for (default: linux)",
         required=False,
     )
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        dest="output",
+        default="snapshot.yaml",
+        help="Output file to write dependencies to",
+        required=False,
+    )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        dest="quiet",
+        action="store_true",
+        help="Suppress output to stdout",
+        required=False,
+    )
+    parser.add_argument(
+        "-v",
+        "--version",
+        dest="version",
+        action="store_true",
+        help="Print the version of the tool",
+        required=False,
+    )
     args = parser.parse_args()
+
+    if args.version:
+        print("wisteria-{}".format(__version__))
+        return 0
 
     # TODO get distrubution at specific time
     url = get_index_url()
@@ -81,15 +111,21 @@ def main():
     deps.add(args.package)
     deps = sorted(deps)
 
-    max_len = max([len(dep) for dep in deps])
-    print("{0:{2}} {1}".format("Package", "Version", max_len + 2))
+    if not args.quiet:
+        max_len = max([len(dep) for dep in deps])
+        print("{0:{2}} {1}".format("Package", "Version", max_len + 2))
+
+    output = []
 
     for dep in deps:
         pkg = distro.release_packages[dep]
         repo = distro.repositories[pkg.repository_name].release_repository
         version = repo.version
-        print("{0:{2}} {1}".format(dep, version, max_len + 2))
+        if not args.quiet:
+            print("{0:{2}} {1}".format(dep, version, max_len + 2))
+        output.append({dep: {"version": version, "url": repo.url}})
 
+    with open(args.output, "w") as f:
+        yaml.dump(output, f)
 
-if __name__ == "__main__":
-    main()
+    return 0
