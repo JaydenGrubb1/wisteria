@@ -1,0 +1,7 @@
+name: wisteria-env
+channels:
+- robostack-staging
+- conda-forge
+dependencies:
+- rosdistro
+- pyyaml
