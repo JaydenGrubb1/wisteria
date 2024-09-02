@@ -1,9 +1,12 @@
 import argparse
 import os
 import yaml
+
 from __init__ import __version__
+
 from rosdistro import get_index, get_index_url, get_cached_distribution
 from rosdistro.dependency_walker import DependencyWalker
+from rosdistro.manifest_provider import get_release_tag
 
 
 def main():
@@ -113,17 +116,19 @@ def main():
 
     if not args.quiet:
         max_len = max([len(dep) for dep in deps])
-        print("{0:{2}} {1}".format("Package", "Version", max_len + 2))
+        print("\033[1m{0:{2}} {1}\033[0m".format("Package", "Version", max_len + 2))
 
-    output = []
+    output = {}
 
     for dep in deps:
         pkg = distro.release_packages[dep]
         repo = distro.repositories[pkg.repository_name].release_repository
-        version = repo.version
+        tag = get_release_tag(repo, dep)
+        version = repo.version.split("-")[0]
+
         if not args.quiet:
             print("{0:{2}} {1}".format(dep, version, max_len + 2))
-        output.append({dep: {"version": version, "url": repo.url}})
+        output[dep] = {"url": repo.url, "version": version, "tag": tag}
 
     with open(args.output, "w") as f:
         yaml.dump(output, f)
