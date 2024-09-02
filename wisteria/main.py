@@ -2,7 +2,7 @@ import argparse
 import os
 import yaml
 
-from __init__ import __version__
+from .__init__ import __version__
 
 from rosdistro import get_index, get_index_url, get_cached_distribution
 from rosdistro.dependency_walker import DependencyWalker
@@ -134,3 +134,6 @@ def main():
         yaml.dump(output, f)
 
     return 0
+
+if __name__ == "__main__":
+    main()
