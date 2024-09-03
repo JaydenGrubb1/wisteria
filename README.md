@@ -1,3 +1,8 @@
+# Wisteria
+
+> [!WARNING]
+> **Deprecated**: See [vinca-snapshot](https://github.com/JaydenGrubb1/vinca) instead.
+
 Dependency snapshotting tool for ROS packages.
 
 ## Flags
